@@ -14,6 +14,7 @@ from utils.database import is_database_ready, execute_query_df
 
 def ensure_database() -> bool:
     """Ensure the database exists and is populated."""
+    # Check if already ready using a fresh check
     if is_database_ready():
         return True
 
@@ -21,10 +22,18 @@ def ensure_database() -> bool:
         db_dir = DB_PATH.parent
         db_dir.mkdir(parents=True, exist_ok=True)
 
+        # Remove existing DB so seed starts fresh
+        if DB_PATH.exists():
+            DB_PATH.unlink()
+
         sys.path.insert(0, str(pathlib.Path(__file__).parent.parent))
         from database.seed_database import seed_database
         success = seed_database(str(DB_PATH))
-        return bool(success and is_database_ready())
+        if not success:
+            return False
+
+        # Verify after seeding
+        return is_database_ready()
     except Exception as e:
         st.error(f"Failed to seed database: {str(e)}")
         return False

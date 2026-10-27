@@ -11,15 +11,14 @@ import streamlit as st
 from config import DB_PATH
 
 
-@st.cache_resource
 def get_connection(db_path=None) -> sqlite3.Connection:
     """
-    Get a cached SQLite connection.
-    Uses cache_resource so the connection persists across reruns.
+    Get a SQLite connection.
+    Creates a new connection each call for thread safety.
     """
     if db_path is None:
         db_path = str(DB_PATH)
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")

@@ -191,7 +191,7 @@ def seed_database(db_path=None):
     db_path = pathlib.Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    conn = sqlite3.connect(str(db_path))
+    conn = sqlite3.connect(str(db_path), check_same_thread=False)
     cursor = conn.cursor()
 
     # Load and execute schema
