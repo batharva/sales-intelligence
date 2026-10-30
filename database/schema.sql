@@ -1,49 +1,47 @@
--- Sales Intelligence Database Schema
--- Modeled after retail sales data with dimensions and facts
-
--- Customers dimension
-CREATE TABLE IF NOT EXISTS customers (
-    customer_id TEXT PRIMARY KEY,
-    customer_name TEXT NOT NULL,
-    segment TEXT NOT NULL CHECK(segment IN ('Consumer', 'Corporate', 'Home Office')),
-    country TEXT DEFAULT 'United States',
-    region TEXT NOT NULL CHECK(region IN ('East', 'West', 'Central', 'South')),
-    state TEXT,
-    city TEXT,
-    postal_code TEXT
+-- Fact table: one row per order line, exactly as loaded (staging layer).
+CREATE TABLE sales (
+    row_id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id      TEXT,
+    order_date    TEXT,      -- ISO-8601 (YYYY-MM-DD); NULL when the source value could not be parsed
+    ship_date     TEXT,
+    customer_id   TEXT,
+    customer_name TEXT,
+    segment       TEXT,
+    region        TEXT,
+    state         TEXT,
+    category      TEXT,
+    sub_category  TEXT,
+    product_id    TEXT,
+    product_name  TEXT,
+    quantity      INTEGER,
+    sales         REAL,      -- net line revenue as recorded (after discount)
+    discount      REAL,      -- fraction, 0.20 = 20 %
+    profit        REAL
 );
 
--- Products dimension
-CREATE TABLE IF NOT EXISTS products (
-    product_id TEXT PRIMARY KEY,
-    product_name TEXT NOT NULL,
-    category TEXT NOT NULL,
-    subcategory TEXT NOT NULL
+-- Dimension tables derived from the fact table (see dimensions.sql).
+CREATE TABLE dim_customers (
+    customer_id   TEXT PRIMARY KEY,
+    customer_name TEXT,
+    segment       TEXT,
+    region        TEXT,
+    state         TEXT
 );
 
--- Orders fact table
-CREATE TABLE IF NOT EXISTS orders (
-    order_id TEXT NOT NULL,
-    order_date TEXT NOT NULL,
-    ship_date TEXT,
-    ship_mode TEXT CHECK(ship_mode IN ('Standard Class', 'Second Class', 'First Class', 'Same Day')),
-    customer_id TEXT NOT NULL,
-    product_id TEXT NOT NULL,
-    sales REAL NOT NULL,
-    quantity INTEGER NOT NULL CHECK(quantity != 0),
-    discount REAL DEFAULT 0 CHECK(discount >= 0 AND discount <= 1),
-    profit REAL,
-    PRIMARY KEY (order_id, product_id),
-    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
-    FOREIGN KEY (product_id) REFERENCES products(product_id)
+CREATE TABLE dim_products (
+    product_id   TEXT PRIMARY KEY,
+    product_name TEXT,
+    category     TEXT,
+    sub_category TEXT
 );
 
--- Indexes for performance
-CREATE INDEX IF NOT EXISTS idx_orders_order_date ON orders(order_date);
-CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);
-CREATE INDEX IF NOT EXISTS idx_orders_product_id ON orders(product_id);
-CREATE INDEX IF NOT EXISTS idx_orders_region ON customers(region);
-CREATE INDEX IF NOT EXISTS idx_orders_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_customers_region ON customers(region);
-CREATE INDEX IF NOT EXISTS idx_products_category ON products(category);
-CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(subcategory);
+-- Build metadata (source, timestamps, optional-column flags).
+CREATE TABLE meta (
+    key   TEXT PRIMARY KEY,
+    value TEXT
+);
+
+CREATE INDEX idx_sales_date     ON sales (order_date);
+CREATE INDEX idx_sales_customer ON sales (customer_id);
+CREATE INDEX idx_sales_product  ON sales (product_id);
+CREATE INDEX idx_sales_order    ON sales (order_id);
